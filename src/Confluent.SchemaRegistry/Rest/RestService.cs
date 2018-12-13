@@ -19,6 +19,10 @@ using System.Net;
 using System.Linq;
 using System.Net.Http;
 using System;
+using System.IO;
+using System.Net.Http.Headers;
+using System.Security;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
@@ -47,26 +51,82 @@ namespace Confluent.SchemaRegistry
         /// </summary>
         private readonly List<HttpClient> clients;
 
-
         /// <summary>
         ///     Initializes a new instance of the RestService class.
         /// </summary>
         public RestService(string schemaRegistryUrl, int timeoutMs, string username, string password)
         { 
-            var authorizationHeader = username != null && password != null 
-                ? new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")))
-                : null;
+            var authorizationHeader = GetAuthorizationHeader(username, password);
 
-            this.clients = schemaRegistryUrl
+            this.clients = GetClients(schemaRegistryUrl, timeoutMs, authorizationHeader, null);
+        }
+
+        public RestService(string schemaRegistryUrl, int timeoutMs, string username, string password, string clientCertificatePath, string clientCertificatePassword = null) : this(schemaRegistryUrl, timeoutMs, username, password)
+        {
+            var authorizationHeader = GetAuthorizationHeader(username, password);
+            var cert = LoadCertificateFromFile(clientCertificatePath, clientCertificatePassword);
+            this.clients = GetClients(schemaRegistryUrl, timeoutMs, authorizationHeader, cert);
+        }
+
+        public RestService(string schemaRegistryUrl, int timeoutMs, string username, string password, byte[] clientCertificateBytes, string clientCertificatePassword = null) : this(schemaRegistryUrl, timeoutMs, username, password)
+        {
+            var authorizationHeader = GetAuthorizationHeader(username, password);
+            var cert = LoadCertificateFromBytes(clientCertificateBytes, clientCertificatePassword);
+            this.clients = GetClients(schemaRegistryUrl, timeoutMs, authorizationHeader, cert);
+        }
+
+        public RestService(string schemaRegistryUrl, int timeoutMs, string username, string password, X509Certificate clientCertificate) : this(schemaRegistryUrl, timeoutMs, username, password)
+        {
+            var authorizationHeader = GetAuthorizationHeader(username, password);
+            this.clients = GetClients(schemaRegistryUrl, timeoutMs, authorizationHeader, clientCertificate);
+        }
+
+        private static AuthenticationHeaderValue GetAuthorizationHeader(string username, string password)
+        {
+            return username != null && password != null 
+                ? new AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")))
+                : null;
+        }
+
+        private static List<HttpClient> GetClients(string schemaRegistryUrl, int timeoutMs, AuthenticationHeaderValue authorizationHeader, X509Certificate clientCertificate)
+        {
+            return schemaRegistryUrl
                 .Split(',')
                 .Select(uri => uri.StartsWith("http", StringComparison.Ordinal) ? uri : "http://" + uri) // need http or https - use http if not present.
-                .Select(uri => 
+                .Select(uri =>
+                {
+                    #if NET452
+                    WebRequestHandler handler = new WebRequestHandler();
+                    #elif NETSTANDARD20
+                    HttpClientHandler handler = new HttpClientHandler();
+                    #endif
+                    
+                    if (clientCertificate != null && uri.StartsWith("https"))
                     {
-                        var client = new HttpClient() { BaseAddress = new Uri(uri, UriKind.Absolute), Timeout = TimeSpan.FromMilliseconds(timeoutMs) };
-                        if (authorizationHeader != null) { client.DefaultRequestHeaders.Authorization = authorizationHeader; }
-                        return client;
-                    })
+                        handler.ClientCertificates.Add(clientCertificate);
+                    }
+
+                    var client = new HttpClient(handler) { BaseAddress = new Uri(uri, UriKind.Absolute), Timeout = TimeSpan.FromMilliseconds(timeoutMs) };
+                    if (authorizationHeader != null) { client.DefaultRequestHeaders.Authorization = authorizationHeader; }
+                    return client;
+                })
                 .ToList();
+        }
+
+        private X509Certificate LoadCertificateFromFile(string certificatePath, string certificatePassword)
+        {
+            if (!File.Exists(certificatePath))
+            {
+                throw new FileNotFoundException($"Unable to locate client certificate at {certificatePath}");
+            }
+            
+            var bytes = File.ReadAllBytes(certificatePath);
+            return LoadCertificateFromBytes(bytes, certificatePassword);
+        }
+
+        private X509Certificate LoadCertificateFromBytes(byte[] rawCertificateBytes, string certificatePassword)
+        {
+            return certificatePassword != null ? new X509Certificate2(rawCertificateBytes, certificatePassword) : new X509Certificate(rawCertificateBytes);
         }
 
         #region Base Requests
