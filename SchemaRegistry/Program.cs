@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Confluent.SchemaRegistry;
 
 namespace SchemaRegistry
 {
@@ -23,7 +24,7 @@ namespace SchemaRegistry
 
             if (useSsl)
             {
-                schemaRegistryClient = new CachedSchemaRegistryClient();
+                //schemaRegistryClient = new CachedSchemaRegistryClient();
             }
             
             Console.WriteLine("Hello World!");
