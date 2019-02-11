@@ -64,7 +64,7 @@ namespace Confluent.SchemaRegistry
             {
                 throw new ArgumentNullException("config properties must be specified.");
             }
-
+            
             var schemaRegistryUrisMaybe = config.FirstOrDefault(prop => prop.Key.ToLower() == SchemaRegistryConfig.PropertyNames.SchemaRegistryUrl);
             if (schemaRegistryUrisMaybe.Value == null) { throw new ArgumentException($"{SchemaRegistryConfig.PropertyNames.SchemaRegistryUrl} configuration property must be specified."); }
             var schemaRegistryUris = (string)schemaRegistryUrisMaybe.Value;
@@ -140,13 +140,24 @@ namespace Confluent.SchemaRegistry
                     property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryRequestTimeoutMs && 
                     property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryMaxCachedSchemas &&
                     property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryBasicAuthCredentialsSource &&
-                    property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryBasicAuthUserInfo)
+                    property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryBasicAuthUserInfo &&
+                    property.Key != SchemaRegistryConfig.PropertyNames.SchemaRegistryClientCertificatePath)
                 {
                     throw new ArgumentException($"CachedSchemaRegistryClient: unknown configuration parameter {property.Key}");
                 }
             }
 
-            this.restService = new RestService(schemaRegistryUris, timeoutMs, username, password);
+            
+            var certPath = Convert.ToString(config.FirstOrDefault(prop => prop.Key.ToLower() == SchemaRegistryConfig.PropertyNames.SchemaRegistryClientCertificatePath).Value);
+
+            if (certPath != null)
+            {
+                this.restService = new RestService(schemaRegistryUris, timeoutMs, username, password, certPath);
+            }
+            else
+            {
+                this.restService = new RestService(schemaRegistryUris, timeoutMs, username, password);
+            }
         }
 
         /// <remarks>

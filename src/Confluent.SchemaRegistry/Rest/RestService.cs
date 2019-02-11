@@ -113,7 +113,7 @@ namespace Confluent.SchemaRegistry
                 .ToList();
         }
 
-        private X509Certificate LoadCertificateFromFile(string certificatePath, string certificatePassword)
+        private X509Certificate2 LoadCertificateFromFile(string certificatePath, string certificatePassword)
         {
             if (!File.Exists(certificatePath))
             {
@@ -124,9 +124,9 @@ namespace Confluent.SchemaRegistry
             return LoadCertificateFromBytes(bytes, certificatePassword);
         }
 
-        private X509Certificate LoadCertificateFromBytes(byte[] rawCertificateBytes, string certificatePassword)
+        private X509Certificate2 LoadCertificateFromBytes(byte[] rawCertificateBytes, string certificatePassword)
         {
-            return certificatePassword != null ? new X509Certificate2(rawCertificateBytes, certificatePassword) : new X509Certificate(rawCertificateBytes);
+            return certificatePassword != null ? new X509Certificate2(rawCertificateBytes, certificatePassword) : new X509Certificate2(rawCertificateBytes);
         }
 
         #region Base Requests

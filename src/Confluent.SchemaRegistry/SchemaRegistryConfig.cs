@@ -60,6 +60,12 @@ namespace Confluent.SchemaRegistry
             ///     Basic auth credentials in the form {username}:{password}.
             /// </summary>
             public const string SchemaRegistryBasicAuthUserInfo = "schema.registry.basic.auth.user.info";
+
+            /// <summary>
+            ///     Certificate file to use for client certificate authentication
+            /// </summary>
+            public const string SchemaRegistryClientCertificatePath = "schema.registry.ssl.certificate.location";
+
         }
 
         /// <summary>
@@ -102,6 +108,15 @@ namespace Confluent.SchemaRegistry
         {
             get { return Get(SchemaRegistryConfig.PropertyNames.SchemaRegistryBasicAuthUserInfo); }
             set { SetObject(SchemaRegistryConfig.PropertyNames.SchemaRegistryBasicAuthUserInfo, value); }
+        }
+
+        /// <summary>
+        ///     Certificate file to use for client certificate authentication
+        /// </summary>
+        public string SchemaRegistryClientCertificatePath
+        {
+            get { return Get(SchemaRegistryConfig.PropertyNames.SchemaRegistryClientCertificatePath); } 
+            set { SetObject(SchemaRegistryConfig.PropertyNames.SchemaRegistryClientCertificatePath, value.ToString()); }
         }
 
         /// <summary>
